@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App</title>
+  <title>Chat App MPK</title>
   <!-- Link Manifest untuk PWA -->
   <link rel="manifest" href="manifest.json">
   <style>
@@ -108,12 +108,12 @@
 <div class="chat-container">
   <!-- Header Aplikasi -->
   <div class="chat-header">
-    <div class="title">Chat Room</div>
+    <div class="title">Chat Room MPK</div>
   </div>
 
   <!-- Area Daftar Pesan -->
   <div class="chat-messages" id="messageList">
-    <div class="message received">Halo! Selamat datang di aplikasi chat.</div>
+    <!-- Pesan dari database akan muncul di sini -->
   </div>
 
   <!-- Form Pengiriman Pesan dan File -->
@@ -122,26 +122,79 @@
     <input type="file" id="fileAttachment" class="file-input" accept="image/*,.pdf,.doc,.docx">
     
     <input type="text" id="messageInput" class="chat-input" placeholder="Ketik pesan...">
-    <button class="btn-send" onclick="sendMessage()">➤</button>
+    <button class="btn-send" id="sendBtn">➤</button>
   </div>
 </div>
 
-<script>
-  function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const messageText = input.value.trim();
-    
+<!-- Firebase Script & Logic Chat Real-time -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    onSnapshot, 
+    query, 
+    orderBy, 
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // Konfigurasi Firebase milikmu
+  const firebaseConfig = {
+    apiKey: "AIzaSyBSOUrxXSW2rh7_f5gyMVBJ7F3157WzNLc",
+    authDomain: "mpk-pengumuman.firebaseapp.com",
+    projectId: "mpk-pengumuman",
+    storageBucket: "mpk-pengumuman.firebasestorage.app",
+    messagingSenderId: "1056517773174",
+    appId: "1:1056517773174:web:c958f6bff028e1b67f0c57",
+    measurementId: "G-M19F2J9PZB"
+  };
+
+  // Inisialisasi Firebase & Firestore
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const messageList = document.getElementById('messageList');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+
+  // Kirim Pesan ke Firestore
+  async function sendMessage() {
+    const messageText = messageInput.value.trim();
     if (messageText !== '') {
-      const messageList = document.getElementById('messageList');
-      const newMessage = document.createElement('div');
-      newMessage.className = 'message sent';
-      newMessage.textContent = messageText;
-      
-      messageList.appendChild(newMessage);
-      input.value = '';
-      messageList.scrollTop = messageList.scrollHeight;
+      try {
+        await addDoc(collection(db, "messages"), {
+          text: messageText,
+          createdAt: serverTimestamp()
+        });
+        messageInput.value = '';
+      } catch (e) {
+        console.error("Gagal mengirim pesan: ", e);
+      }
     }
   }
+
+  // Event Listener Tombol Kirim & Enter
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  // Mendengarkan Pesan Secara Real-time (Auto Update)
+  const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+  onSnapshot(q, (snapshot) => {
+    messageList.innerHTML = '';
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.text) {
+        const newMessage = document.createElement('div');
+        newMessage.className = 'message sent';
+        newMessage.textContent = data.text;
+        messageList.appendChild(newMessage);
+      }
+    });
+    messageList.scrollTop = messageList.scrollHeight;
+  });
 </script>
 
 </body>
